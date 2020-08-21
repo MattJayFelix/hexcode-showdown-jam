@@ -1,39 +1,89 @@
-﻿using System.Collections;
+﻿#define DEBUG
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class RasterScanner : MonoBehaviour
 {
-    public BitmapLayer[] bitmapLayers;
+    public BitmapBuffer bitmapBuffer;
+    public RenderedChunk[,] renderedChunks;
 
     public const int numColors = 8;
-    public Material[] colorMaterials = new Material[numColors];
+    public Material colorMaterial;
 
-    public int nextLayer = 0; // Start at layer 0
+    public BitmapBufferChunkPointer chunkPtr;
+
+    void Start()
+    {
+        renderedChunks = new RenderedChunk[BitmapBuffer.sizeXInChunks,BitmapBuffer.sizeZInChunks];
+        for (int i=0;i<BitmapBuffer.sizeXInChunks;i++)
+        {
+            for (int j=0;j<BitmapBuffer.sizeZInChunks;j++)
+            {
+                renderedChunks[i,j] = CreateRenderedChunk("Rendered Chunk (" + i.ToString() + "," + j.ToString() + ")");
+                renderedChunks[i, j].SetBufferAndOffset(bitmapBuffer,new IntVectorXYZ(i * BitmapBuffer.chunkSize, 0, j * BitmapBuffer.chunkSize));
+            }
+        }
+        chunkPtr = new BitmapBufferChunkPointer(bitmapBuffer);
+    }
 
     public void FullRefresh()
     {
-        for (int i=0;i<bitmapLayers.Length;i++)
+        for (int i=0;i<BitmapBuffer.sizeXInChunks;i++)
         {
-            RefreshLayer(i);
+            for (int j=0;j<BitmapBuffer.sizeZInChunks;j++)
+            {
+                RefreshChunk(i,j);
+            }
         }
-        nextLayer = 0;
     }
 
-    void Update() // One layer examined per frame
+    void Update()
     {
-        RefreshLayer(nextLayer);
-        nextLayer++;
-        if (nextLayer >= bitmapLayers.Length) nextLayer = 0;
+        int searchTimeout = 64; // Search through X chunks for a dirty one each frame
+        int chunkRefreshTimeout = 16; // Refresh up to Y chunks per frame
+        while (searchTimeout > 0 && chunkRefreshTimeout > 0)
+        {
+            if (!chunkPtr.CurrentChunkDirty())
+            {
+                searchTimeout--;
+                chunkPtr.Advance();
+                continue;
+            }
+            // Found a dirty chunk!
+            chunkRefreshTimeout--;
+            // Refresh the chunk
+            IntVectorXYZ currentCoords = chunkPtr.GetCurrentCoords();
+            RenderedChunk chunk = renderedChunks[currentCoords.x, currentCoords.z];
+            chunk.Refresh();
+#if DEBUG
+            Debug.Log("Refreshed chunk " + currentCoords.x + ", " + currentCoords.z);
+#endif
+
+            chunkPtr.Advance();
+        }
+#if DEBUG
+        if (searchTimeout == 0)
+        {
+            Debug.Log("Raster scanner timed out without finding dirty chunks.");
+        }
+#endif
     }
 
-    public void RefreshLayer(int index)
+    public void RefreshChunk(int chunkX,int chunkZ)
     {
-        if (bitmapLayers[index].dirtyFlag == false) return; // Nothing to do
-        bitmapLayers[index].dirtyFlag = false;
-
-
+#if DEBUG
+        Debug.Log("Refreshing chunk " + chunkX + ", " + chunkZ);
+#endif
+        renderedChunks[chunkX, chunkZ].Refresh();
+        bitmapBuffer.dirtyChunks[chunkX, chunkZ] = false; // We just refreshed it
     }
 
-
+    public RenderedChunk CreateRenderedChunk(string name = "Rendered Chunk")
+    {
+        GameObject layerOb = new GameObject(name);
+        layerOb.transform.parent = this.transform;
+        RenderedChunk result = layerOb.AddComponent<RenderedChunk>();
+        return result;
+    }
 }
