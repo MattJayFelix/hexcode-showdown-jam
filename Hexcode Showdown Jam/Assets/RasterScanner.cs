@@ -84,6 +84,7 @@ public class RasterScanner : MonoBehaviour
         GameObject layerOb = new GameObject(name);
         layerOb.transform.parent = this.transform;
         RenderedChunk result = layerOb.AddComponent<RenderedChunk>();
+        result.meshRenderer.material = colorMaterial;
         return result;
     }
 }

@@ -10,7 +10,11 @@ public class RenderedChunk : MonoBehaviour
 
     public BitmapBuffer buffer;
     public IntVectorXYZ offset;
-    
+
+    public const float uOffsetPerColor = (1.0f / (float)RasterScanner.numColors);
+    public const float uOffset25Percent = 0.25f * uOffsetPerColor;
+    public const float uOffset50Percent = 0.5f * uOffsetPerColor;
+    public const float uOffset75Percent = 0.75f * uOffsetPerColor;
 
     public void Awake()
     {
@@ -58,6 +62,8 @@ public class RenderedChunk : MonoBehaviour
                 int currentValue = buffer.Get(workingCoords);
                 if (currentValue == 0) continue; // Nothing to add to mesh
                 int currentColor = buffer.ExtractColor(currentValue);
+                float baseU = (currentColor - 1) * uOffsetPerColor; // Color 0 reserved for transparency
+
                 float currentHeight = buffer.ExtractHeight(currentValue);
                 if (currentHeight == 0.0f) currentHeight = 0.25f; // Min height
 
@@ -71,18 +77,18 @@ public class RenderedChunk : MonoBehaviour
 
                 // Now do the top face
                 Vector2 materialUV1, materialUV2, materialUV3, materialUV4;
-                materialUV1 = new Vector2(0.1f, 0.1f);
-                materialUV2 = new Vector2(0.1f, 0.9f);
-                materialUV3 = new Vector2(0.9f, 0.9f);
-                materialUV4 = new Vector2(0.9f, 0.1f);
+                materialUV1 = new Vector2(baseU + uOffset25Percent, 0.1f);
+                materialUV2 = new Vector2(baseU + uOffset25Percent, 0.9f);
+                materialUV3 = new Vector2(baseU + uOffset75Percent, 0.9f);
+                materialUV4 = new Vector2(baseU + uOffset75Percent, 0.1f);
 
                 AddTriangle(vertexVector, uvVector, triangleVector, topSouthwest, topNorthwest, topSoutheast, materialUV1, materialUV2, materialUV4);
                 AddTriangle(vertexVector, uvVector, triangleVector, topSoutheast, topNorthwest, topNortheast, materialUV2, materialUV1, materialUV3);
 
                 // Triangle faces
-                Vector2 triangleUVBottom = new Vector2(0.5f, 0.1f);
-                Vector2 triangleUVLeft = new Vector2(0.1f, 0.9f);
-                Vector2 triangleUVRight = new Vector2(0.9f, 0.9f);
+                Vector2 triangleUVBottom = new Vector2(baseU + uOffset50Percent, 0.1f);
+                Vector2 triangleUVLeft = new Vector2(baseU + uOffset25Percent, 0.9f);
+                Vector2 triangleUVRight = new Vector2(baseU + uOffset75Percent, 0.9f);
 
                 AddTriangle(vertexVector, uvVector, triangleVector, bottom, topSouthwest, topSoutheast, triangleUVBottom, triangleUVLeft, triangleUVRight);
                 AddTriangle(vertexVector, uvVector, triangleVector, bottom, topNorthwest, topSouthwest, triangleUVBottom, triangleUVLeft, triangleUVRight);
