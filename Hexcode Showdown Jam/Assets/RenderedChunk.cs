@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿//#define OUTPUT_VERTICES
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,7 +9,7 @@ public class RenderedChunk : MonoBehaviour
     public MeshRenderer meshRenderer;
     public TextOutput textOutput;
 
-    public BitmapBuffer buffer;
+    public VoxelBuffer buffer;
     public IntVectorXYZ offset;
 
     public const float uOffsetPerColor = (1.0f / (float)RasterScanner.numColors);
@@ -23,11 +24,11 @@ public class RenderedChunk : MonoBehaviour
         textOutput = gameObject.AddComponent<TextOutput>();
     }
 
-    public void SetBufferAndOffset(BitmapBuffer buffer,IntVectorXYZ newOffset)
+    public void SetBufferAndOffset(VoxelBuffer buffer,IntVectorXYZ newOffset)
     {
         this.buffer = buffer;
         this.offset = newOffset;
-        transform.position = new Vector3(newOffset.x, 0.0f, newOffset.z);
+        transform.position = new Vector3(newOffset.x, newOffset.y, newOffset.z);
     }
 
     public void Refresh()
@@ -54,46 +55,56 @@ public class RenderedChunk : MonoBehaviour
         triangleVector.Add(1);
         triangleVector.Add(2);
         */
-        for (int deltaX = 0;deltaX < BitmapBuffer.chunkSize;deltaX++)
+        for (int deltaX = 0;deltaX < VoxelBuffer.chunkSize;deltaX++)
         {
-            for (int deltaZ = 0; deltaZ < BitmapBuffer.chunkSize;deltaZ++)
+            for (int deltaY = 0; deltaY < VoxelBuffer.chunkSize;deltaY++)
             {
-                IntVectorXYZ workingCoords = new IntVectorXYZ(offset.x + deltaX, 0, offset.z + deltaZ);
-                int currentValue = buffer.Get(workingCoords);
-                if (currentValue == 0) continue; // Nothing to add to mesh
-                int currentColor = buffer.ExtractColor(currentValue);
-                float baseU = (currentColor - 1) * uOffsetPerColor; // Color 0 reserved for transparency
+                for (int deltaZ = 0; deltaZ < VoxelBuffer.chunkSize; deltaZ++)
+                {
+                    IntVectorXYZ workingCoords = new IntVectorXYZ(offset.x + deltaX, offset.y + deltaY, offset.z + deltaZ);
+                    int currentValue = buffer.Get(workingCoords);
+                    if (currentValue == 0) continue; // Nothing to add to mesh
+                    float baseU = (currentValue - 1) * uOffsetPerColor; // Color 0 reserved for transparency
 
-                float currentHeight = buffer.ExtractHeight(currentValue);
-                if (currentHeight == 0.0f) currentHeight = 0.25f; // Min height
+                    // Establish all eight points of the voxel
+                    Vector3 bottomSouthwest = new Vector3(deltaX, deltaY, deltaZ);
+                    Vector3 bottomNorthwest = bottomSouthwest + Vector3.forward;
+                    Vector3 bottomNortheast = bottomNorthwest + Vector3.right;
+                    Vector3 bottomSoutheast = bottomSouthwest + Vector3.right;
 
-                // Establish all five points of the pyramid
-                Vector3 topSouthwest = new Vector3(deltaX, currentHeight, deltaZ);
-                Vector3 topNorthwest = topSouthwest + Vector3.forward;
-                Vector3 topNortheast = topNorthwest + Vector3.right;
-                Vector3 topSoutheast = topSouthwest + Vector3.right;
+                    Vector3 topSouthwest = bottomSouthwest + Vector3.up;
+                    Vector3 topSoutheast = bottomSoutheast + Vector3.up;
+                    Vector3 topNorthwest = bottomNorthwest + Vector3.up;
+                    Vector3 topNortheast = bottomNortheast + Vector3.up;
 
-                Vector3 bottom = topSouthwest + new Vector3(0.5f, 0-currentHeight, 0.5f);
+                    Vector2 materialBL, materialTL, materialTR, materialBR;
+                    materialBL = new Vector2(baseU + uOffset25Percent, 0.1f);
+                    materialTL = new Vector2(baseU + uOffset25Percent, 0.9f);
+                    materialTR = new Vector2(baseU + uOffset75Percent, 0.9f);
+                    materialBR = new Vector2(baseU + uOffset75Percent, 0.1f);
 
-                // Now do the top face
-                Vector2 materialUV1, materialUV2, materialUV3, materialUV4;
-                materialUV1 = new Vector2(baseU + uOffset25Percent, 0.1f);
-                materialUV2 = new Vector2(baseU + uOffset25Percent, 0.9f);
-                materialUV3 = new Vector2(baseU + uOffset75Percent, 0.9f);
-                materialUV4 = new Vector2(baseU + uOffset75Percent, 0.1f);
+                    // Top face
+                    AddQuad(vertexVector, uvVector, triangleVector, topSouthwest, topNorthwest, topNortheast, topSoutheast, materialBL, materialTL, materialTR, materialBR);
+                    //AddTriangle(vertexVector, uvVector, triangleVector, topSouthwest, topNorthwest, topSoutheast, materialUV1, materialUV2, materialUV4);
+                    //AddTriangle(vertexVector, uvVector, triangleVector, topSoutheast, topNorthwest, topNortheast, materialUV2, materialUV1, materialUV3);
 
-                AddTriangle(vertexVector, uvVector, triangleVector, topSouthwest, topNorthwest, topSoutheast, materialUV1, materialUV2, materialUV4);
-                AddTriangle(vertexVector, uvVector, triangleVector, topSoutheast, topNorthwest, topNortheast, materialUV2, materialUV1, materialUV3);
+                    // Bottom face
+                    AddQuad(vertexVector, uvVector, triangleVector, bottomSouthwest, bottomSoutheast, bottomNortheast, bottomNorthwest, materialBL, materialTL, materialTR, materialBR);
 
-                // Triangle faces
-                Vector2 triangleUVBottom = new Vector2(baseU + uOffset50Percent, 0.1f);
-                Vector2 triangleUVLeft = new Vector2(baseU + uOffset25Percent, 0.9f);
-                Vector2 triangleUVRight = new Vector2(baseU + uOffset75Percent, 0.9f);
+                    // West face
+                    AddQuad(vertexVector, uvVector, triangleVector, bottomNorthwest, topNorthwest, topSouthwest, bottomSouthwest, materialBL, materialTL, materialTR, materialBR);
 
-                AddTriangle(vertexVector, uvVector, triangleVector, bottom, topSouthwest, topSoutheast, triangleUVBottom, triangleUVLeft, triangleUVRight);
-                AddTriangle(vertexVector, uvVector, triangleVector, bottom, topNorthwest, topSouthwest, triangleUVBottom, triangleUVLeft, triangleUVRight);
-                AddTriangle(vertexVector, uvVector, triangleVector, bottom, topNortheast, topNorthwest, triangleUVBottom, triangleUVLeft, triangleUVRight);
-                AddTriangle(vertexVector, uvVector, triangleVector, bottom, topSoutheast, topNortheast, triangleUVBottom, triangleUVLeft, triangleUVRight);
+                    // East face
+                    AddQuad(vertexVector, uvVector, triangleVector, bottomSoutheast, topSoutheast, topNortheast, bottomNortheast, materialBL, materialTL, materialTR, materialBR);
+
+                    // North face
+                    //AddQuad(vertexVector, uvVector, triangleVector, bottomNortheast, bottomNorthwest, topNorthwest, topNortheast, materialBL, materialTL, materialTR, materialBR);
+                    AddQuad(vertexVector, uvVector, triangleVector, topNortheast, topNorthwest, bottomNorthwest, bottomNortheast, materialBL, materialTL, materialTR, materialBR);
+
+                    // South face
+                    AddQuad(vertexVector, uvVector, triangleVector, bottomSoutheast, bottomSouthwest, topSouthwest, topSoutheast, materialBL, materialTL, materialTR, materialBR);
+
+                }
             }
         }
 
@@ -111,12 +122,10 @@ public class RenderedChunk : MonoBehaviour
         chunkMesh.RecalculateBounds();
         chunkMesh.RecalculateTangents();
 
-        string output = "VERTICES:\n";
-        for (int i=0;i<vertexVector.Count;i++)
-        {
-            output += "(" + vertexVector[i] + ")";
-        }
-        textOutput.output = output;
+#if OUTPUT_VERTICES
+        OutputVertices(vertexVector);
+#endif
+
     }
 
     public void Send3VerticesOntoTriangle(int baseVertexIndex, List<int> triangles) {
@@ -125,6 +134,11 @@ public class RenderedChunk : MonoBehaviour
         triangles.Add(baseVertexIndex);
     }
 
+    public void AddQuad(List<Vector3> vertexVector, List<Vector2> uvVector, List<int> triangleVector, Vector3 vertexA, Vector3 vertexB, Vector3 vertexC, Vector3 vertexD, Vector2 uvA, Vector2 uvB, Vector2 uvC, Vector2 uvD)
+    {
+        AddTriangle(vertexVector, uvVector, triangleVector, vertexA, vertexB, vertexD, uvA, uvB, uvD);
+        AddTriangle(vertexVector, uvVector, triangleVector, vertexD, vertexB, vertexC, uvB, uvA, uvC);
+    }
     public void AddTriangle(List<Vector3> vertexVector,List<Vector2> uvVector,List<int> triangleVector,Vector3 vertexA,Vector3 vertexB,Vector3 vertexC,Vector2 uvA,Vector2 uvB,Vector2 uvC)
     {
         vertexVector.Add(vertexA);
@@ -138,4 +152,15 @@ public class RenderedChunk : MonoBehaviour
         triangleVector.Add(vertexVector.Count - 1);
     }
 
+#if OUTPUT_VERTICES
+    private void OutputVertices(List<Vector3> vertexVector)
+    {
+        string output = "VERTICES:\n";
+        for (int i = 0; i < vertexVector.Count; i++)
+        {
+            output += "(" + vertexVector[i] + ")";
+        }
+        textOutput.output = output;
+    }
+#endif
 }

@@ -4,18 +4,19 @@ using UnityEngine;
 
 public class BitmapBufferRandomizer : MonoBehaviour
 {
-    BitmapBuffer buffer;
+    VoxelBuffer buffer;
     void Start()
     {
-        if (buffer == null) buffer = GetComponent<BitmapBuffer>();
+        if (buffer == null) buffer = GetComponent<VoxelBuffer>();
     }
 
     void Update()
     {
         // Pick a random coordinate in the buffer and give it a random value
-        int x = Random.Range(0,BitmapBuffer.sizeX);
-        int z = Random.Range(0,BitmapBuffer.sizeZ);
-        int newValue = Random.Range(0, 4) * 10 + Random.Range(0, 9);
-        buffer.Set(new IntVectorXYZ(x, 0, z), newValue);
+        int x = Random.Range(0,VoxelBuffer.sizeX);
+        int y = Random.Range(0,VoxelBuffer.sizeY);
+        int z = Random.Range(0,VoxelBuffer.sizeZ);
+        int newValue = Random.Range(0, 9) + 1;
+        buffer.Set(new IntVectorXYZ(x, y, z), newValue);
     }
 }

@@ -5,35 +5,41 @@ using UnityEngine;
 
 public class RasterScanner : MonoBehaviour
 {
-    public BitmapBuffer bitmapBuffer;
-    public RenderedChunk[,] renderedChunks;
+    public VoxelBuffer bitmapBuffer;
+    public RenderedChunk[,,] renderedChunks;
 
     public const int numColors = 8;
     public Material colorMaterial;
 
-    public BitmapBufferChunkPointer chunkPtr;
+    public VoxelBufferChunkPointer chunkPtr;
 
     void Start()
     {
-        renderedChunks = new RenderedChunk[BitmapBuffer.sizeXInChunks,BitmapBuffer.sizeZInChunks];
-        for (int i=0;i<BitmapBuffer.sizeXInChunks;i++)
+        renderedChunks = new RenderedChunk[VoxelBuffer.sizeXInChunks,VoxelBuffer.sizeYInChunks,VoxelBuffer.sizeZInChunks];
+        for (int i=0;i<VoxelBuffer.sizeXInChunks;i++)
         {
-            for (int j=0;j<BitmapBuffer.sizeZInChunks;j++)
+            for (int j = 0; j < VoxelBuffer.sizeYInChunks; j++)
             {
-                renderedChunks[i,j] = CreateRenderedChunk("Rendered Chunk (" + i.ToString() + "," + j.ToString() + ")");
-                renderedChunks[i, j].SetBufferAndOffset(bitmapBuffer,new IntVectorXYZ(i * BitmapBuffer.chunkSize, 0, j * BitmapBuffer.chunkSize));
+                for (int k = 0; k < VoxelBuffer.sizeZInChunks; k++)
+                {
+                    renderedChunks[i, j, k] = CreateRenderedChunk("Rendered Chunk (" + i.ToString() + "," + j.ToString() + "," + k.ToString() + ")");
+                    renderedChunks[i, j, k].SetBufferAndOffset(bitmapBuffer, new IntVectorXYZ(i * VoxelBuffer.chunkSize, j * VoxelBuffer.chunkSize, k * VoxelBuffer.chunkSize));
+                }
             }
         }
-        chunkPtr = new BitmapBufferChunkPointer(bitmapBuffer);
+        chunkPtr = new VoxelBufferChunkPointer(bitmapBuffer);
     }
 
     public void FullRefresh()
     {
-        for (int i=0;i<BitmapBuffer.sizeXInChunks;i++)
+        for (int i=0;i<VoxelBuffer.sizeXInChunks;i++)
         {
-            for (int j=0;j<BitmapBuffer.sizeZInChunks;j++)
+            for (int j=0;j<VoxelBuffer.sizeYInChunks;j++)
             {
-                RefreshChunk(i,j);
+                for (int k = 0; k < VoxelBuffer.sizeZInChunks; k++)
+                {
+                    RefreshChunk(i, j, k);
+                }
             }
         }
     }
@@ -54,10 +60,10 @@ public class RasterScanner : MonoBehaviour
             chunkRefreshTimeout--;
             // Refresh the chunk
             IntVectorXYZ currentCoords = chunkPtr.GetCurrentCoords();
-            RenderedChunk chunk = renderedChunks[currentCoords.x, currentCoords.z];
+            RenderedChunk chunk = renderedChunks[currentCoords.x, currentCoords.y, currentCoords.z];
             chunk.Refresh();
 #if DEBUG
-            Debug.Log("Refreshed chunk " + currentCoords.x + ", " + currentCoords.z);
+            Debug.Log("Refreshed chunk " + currentCoords.x + ", " + currentCoords.y + ", " + currentCoords.z);
 #endif
 
             chunkPtr.Advance();
@@ -70,13 +76,13 @@ public class RasterScanner : MonoBehaviour
 #endif
     }
 
-    public void RefreshChunk(int chunkX,int chunkZ)
+    public void RefreshChunk(int chunkX,int chunkY,int chunkZ)
     {
 #if DEBUG
         Debug.Log("Refreshing chunk " + chunkX + ", " + chunkZ);
 #endif
-        renderedChunks[chunkX, chunkZ].Refresh();
-        bitmapBuffer.dirtyChunks[chunkX, chunkZ] = false; // We just refreshed it
+        renderedChunks[chunkX, chunkY, chunkZ].Refresh();
+        bitmapBuffer.dirtyChunks[chunkX, chunkY, chunkZ] = false; // We just refreshed it
     }
 
     public RenderedChunk CreateRenderedChunk(string name = "Rendered Chunk")

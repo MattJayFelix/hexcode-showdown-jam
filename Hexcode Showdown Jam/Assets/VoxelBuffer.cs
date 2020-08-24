@@ -42,53 +42,64 @@ public struct IntVectorXYZ
         return new IntVectorXYZ(x, y + 1, z);
     }
 }
-public class BitmapBuffer : MonoBehaviour
+public class VoxelBuffer : MonoBehaviour
 {
     public const int sizeX = 256;
-    public const int sizeY = 4;
-    public const int sizeZ = 224;
+    public const int sizeY = 128;
+    public const int sizeZ = 512;
 
     public const int chunkSize = 16;
     public const int sizeXInChunks = sizeX / chunkSize;
+    public const int sizeYInChunks = sizeY / chunkSize;
     public const int sizeZInChunks = sizeZ / chunkSize;
 
-    public ushort[,] contents = new ushort[sizeX, sizeZ];
-    public bool[,] dirtyChunks = new bool[sizeXInChunks,sizeZInChunks];
+    public ushort[,,] contents = new ushort[sizeX, sizeY,sizeZ];
+    public bool[,,] dirtyChunks = new bool[sizeXInChunks,sizeYInChunks,sizeZInChunks];
 
     public int y;
 
     public void Set(IntVectorXYZ coords,ushort value)
     {
         if (OutOfBounds(coords)) return;
-        ushort oldValue = contents[coords.x, coords.z];
+        ushort oldValue = contents[coords.x, coords.y, coords.z];
         if (value != oldValue)
         {
-            contents[coords.x, coords.z] = value;
-            //Debug.Log("Set " + coords.x + "," + coords.z + " to " + value);
+            contents[coords.x, coords.y, coords.z] = value;
 
-            IntVectorXYZ chunkCoords = PixelCoordsToChunkCoords(coords);
-            dirtyChunks[chunkCoords.x, chunkCoords.z] = true;
+            IntVectorXYZ chunkCoords = VoxelCoordsToChunkCoords(coords);
+            dirtyChunks[chunkCoords.x, chunkCoords.y, chunkCoords.z] = true;
 
             if (coords.x > 0 && coords.x % chunkSize == 0)
             {
                 IntVectorXYZ westChunk = chunkCoords.West();
-                dirtyChunks[westChunk.x, westChunk.z] = true;
+                dirtyChunks[westChunk.x, westChunk.y, westChunk.z] = true;
             }
             else if (coords.x < sizeX - 1 && coords.x % chunkSize == chunkSize - 1)
             {
                 IntVectorXYZ eastChunk = chunkCoords.East();
-                dirtyChunks[eastChunk.x, eastChunk.z] = true;
+                dirtyChunks[eastChunk.x, eastChunk.y, eastChunk.z] = true;
+            }
+
+            if (coords.y > 0 && coords.y % chunkSize == 0)
+            {
+                IntVectorXYZ upChunk = chunkCoords.Up();
+                dirtyChunks[upChunk.x, upChunk.y, upChunk.z] = true;
+            }
+            else if (coords.y < sizeY - 1 && coords.y % chunkSize == chunkSize - 1)
+            {
+                IntVectorXYZ downChunk = chunkCoords.Down();
+                dirtyChunks[downChunk.x, downChunk.y, downChunk.z] = true;
             }
 
             if (coords.z > 0 && coords.z % chunkSize == 0)
             {
                 IntVectorXYZ southChunk = chunkCoords.South();
-                dirtyChunks[southChunk.x, southChunk.z] = true;
+                dirtyChunks[southChunk.x, southChunk.y, southChunk.z] = true;
             }
             else if (coords.z < sizeZ - 1 && coords.z % chunkSize == chunkSize - 1)
             {
                 IntVectorXYZ northChunk = chunkCoords.North();
-                dirtyChunks[northChunk.x, northChunk.z] = true;
+                dirtyChunks[northChunk.x, northChunk.y, northChunk.z] = true;
             }
         }
     }
@@ -99,13 +110,14 @@ public class BitmapBuffer : MonoBehaviour
     public int Get(IntVectorXYZ coords)
     {
         if (OutOfBounds(coords)) return -1;
-        return contents[coords.x, coords.z];
+        return contents[coords.x, coords.y, coords.z];
     }
-    public IntVectorXYZ PixelCoordsToChunkCoords(IntVectorXYZ pixelCoords)
+    public IntVectorXYZ VoxelCoordsToChunkCoords(IntVectorXYZ pixelCoords)
     {
-        return new IntVectorXYZ(pixelCoords.x / chunkSize, 0, pixelCoords.z / chunkSize);
+        return new IntVectorXYZ(pixelCoords.x / chunkSize, pixelCoords.y / chunkSize, pixelCoords.z / chunkSize);
     }
 
+    /*
     public IntVectorXYZ GetInDirection(IntVectorXYZ coords,int d)
     {
         IntVectorXYZ result;
@@ -113,61 +125,52 @@ public class BitmapBuffer : MonoBehaviour
         else if (d == 1) result = coords.East();
         else if (d == 2) result = coords.South();
         else result = coords.West();
+
         if (OutOfBounds(result)) return IntVectorXYZ.oob;
         return result;
     }
+    */
 
     public bool OutOfBounds(IntVectorXYZ coords)
     {
         if (coords.x < 0) return true;
         if (coords.x >= sizeX) return true;
+        if (coords.y < 0) return true;
+        if (coords.y >= sizeY) return true;
         if (coords.z < 0) return true;
         if (coords.z >= sizeZ) return true;
         return false;
     }
-
-    public bool CheckIfReferenceIsHigher(IntVectorXYZ reference, IntVectorXYZ toCompare)
-    {
-        int referenceValue = contents[reference.x, reference.z];
-        int cValue = contents[toCompare.x, toCompare.z];
-        int referenceHeight = ExtractHeight(referenceValue);
-        int cHeight = ExtractHeight(cValue);
-        if (referenceHeight > cHeight) return true;
-        return false;
-    }
-    public int ExtractColor(int value)
-    {
-        return value % 10;
-    }
-    public int ExtractHeight(int value)
-    {
-        return value / 10;
-    }
 }
-public class BitmapBufferChunkPointer
+public class VoxelBufferChunkPointer
 {
-    private BitmapBuffer buffer;
+    private VoxelBuffer buffer;
     private IntVectorXYZ pointerCoords;
-    public BitmapBufferChunkPointer(BitmapBuffer buffer)
+    public VoxelBufferChunkPointer(VoxelBuffer buffer)
     {
         this.buffer = buffer;
     }
     public void Advance()
     {
         pointerCoords.x++;
-        if (pointerCoords.x >= BitmapBuffer.sizeXInChunks)
+        if (pointerCoords.x >= VoxelBuffer.sizeXInChunks)
         {
             pointerCoords.x = 0;
+            pointerCoords.y++;
+        }
+        if (pointerCoords.y >= VoxelBuffer.sizeYInChunks)
+        {
+            pointerCoords.y = 0;
             pointerCoords.z++;
         }
-        if (pointerCoords.z >= BitmapBuffer.sizeZInChunks)
+        if (pointerCoords.z >= VoxelBuffer.sizeZInChunks)
         {
             pointerCoords.z = 0;
         }
     }
     public bool CurrentChunkDirty()
     {
-        return buffer.dirtyChunks[pointerCoords.x, pointerCoords.z];
+        return buffer.dirtyChunks[pointerCoords.x, pointerCoords.y, pointerCoords.z];
     }
     public IntVectorXYZ GetCurrentCoords()
     {
