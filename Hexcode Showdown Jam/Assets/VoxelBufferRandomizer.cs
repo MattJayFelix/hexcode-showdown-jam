@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class BitmapBufferRandomizer : MonoBehaviour
+public class VoxelBufferRandomizer : MonoBehaviour
 {
     VoxelBuffer buffer;
     void Start()

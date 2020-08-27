@@ -9,6 +9,7 @@ public struct IntVectorXYZ
     public int z;
 
     public static IntVectorXYZ oob = new IntVectorXYZ(-1,-1, -1);
+    public bool isOob { get { return oob.x < 0; } }
 
     public IntVectorXYZ(int iX, int iY, int iZ)
     {
@@ -35,11 +36,11 @@ public struct IntVectorXYZ
     }
     public IntVectorXYZ Up()
     {
-        return new IntVectorXYZ(x, y-1, z);
+        return new IntVectorXYZ(x, y+1, z);
     }
     public IntVectorXYZ Down()
     {
-        return new IntVectorXYZ(x, y + 1, z);
+        return new IntVectorXYZ(x, y-1, z);
     }
 }
 public class VoxelBuffer : MonoBehaviour
@@ -72,23 +73,23 @@ public class VoxelBuffer : MonoBehaviour
             if (coords.x > 0 && coords.x % chunkSize == 0)
             {
                 IntVectorXYZ westChunk = chunkCoords.West();
-                dirtyChunks[westChunk.x, westChunk.y, westChunk.z] = true;
+                if (!westChunk.isOob) dirtyChunks[westChunk.x, westChunk.y, westChunk.z] = true;
             }
             else if (coords.x < sizeX - 1 && coords.x % chunkSize == chunkSize - 1)
             {
                 IntVectorXYZ eastChunk = chunkCoords.East();
-                dirtyChunks[eastChunk.x, eastChunk.y, eastChunk.z] = true;
+                if (!eastChunk.isOob) dirtyChunks[eastChunk.x, eastChunk.y, eastChunk.z] = true;
             }
 
             if (coords.y > 0 && coords.y % chunkSize == 0)
             {
                 IntVectorXYZ upChunk = chunkCoords.Up();
-                dirtyChunks[upChunk.x, upChunk.y, upChunk.z] = true;
+                if (!upChunk.isOob) dirtyChunks[upChunk.x, upChunk.y, upChunk.z] = true;
             }
             else if (coords.y < sizeY - 1 && coords.y % chunkSize == chunkSize - 1)
             {
                 IntVectorXYZ downChunk = chunkCoords.Down();
-                dirtyChunks[downChunk.x, downChunk.y, downChunk.z] = true;
+                if (!downChunk.isOob) dirtyChunks[downChunk.x, downChunk.y, downChunk.z] = true;
             }
 
             if (coords.z > 0 && coords.z % chunkSize == 0)

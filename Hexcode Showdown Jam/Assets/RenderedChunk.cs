@@ -63,7 +63,7 @@ public class RenderedChunk : MonoBehaviour
                 {
                     IntVectorXYZ workingCoords = new IntVectorXYZ(offset.x + deltaX, offset.y + deltaY, offset.z + deltaZ);
                     int currentValue = buffer.Get(workingCoords);
-                    if (currentValue == 0) continue; // Nothing to add to mesh
+                    if (currentValue <= 0) continue; // Nothing to add to mesh
                     float baseU = (currentValue - 1) * uOffsetPerColor; // Color 0 reserved for transparency
 
                     // Establish all eight points of the voxel
@@ -83,26 +83,32 @@ public class RenderedChunk : MonoBehaviour
                     materialTR = new Vector2(baseU + uOffset75Percent, 0.9f);
                     materialBR = new Vector2(baseU + uOffset75Percent, 0.1f);
 
+                    int northValue = buffer.Get(workingCoords.North());
+                    int southValue = buffer.Get(workingCoords.South());
+                    int eastValue = buffer.Get(workingCoords.East());
+                    int westValue = buffer.Get(workingCoords.West());
+                    int upValue = buffer.Get(workingCoords.Up());
+                    int downValue = buffer.Get(workingCoords.Down());
+
                     // Top face
-                    AddQuad(vertexVector, uvVector, triangleVector, topSouthwest, topNorthwest, topNortheast, topSoutheast, materialBL, materialTL, materialTR, materialBR);
+                    if (upValue <= 0) AddQuad(vertexVector, uvVector, triangleVector, topSouthwest, topNorthwest, topNortheast, topSoutheast, materialBL, materialTL, materialTR, materialBR);
                     //AddTriangle(vertexVector, uvVector, triangleVector, topSouthwest, topNorthwest, topSoutheast, materialUV1, materialUV2, materialUV4);
                     //AddTriangle(vertexVector, uvVector, triangleVector, topSoutheast, topNorthwest, topNortheast, materialUV2, materialUV1, materialUV3);
 
                     // Bottom face
-                    AddQuad(vertexVector, uvVector, triangleVector, bottomSouthwest, bottomSoutheast, bottomNortheast, bottomNorthwest, materialBL, materialTL, materialTR, materialBR);
+                    if (downValue <= 0) AddQuad(vertexVector, uvVector, triangleVector, bottomSouthwest, bottomSoutheast, bottomNortheast, bottomNorthwest, materialBL, materialTL, materialTR, materialBR);
 
                     // West face
-                    AddQuad(vertexVector, uvVector, triangleVector, bottomNorthwest, topNorthwest, topSouthwest, bottomSouthwest, materialBL, materialTL, materialTR, materialBR);
+                    if (westValue <= 0) AddQuad(vertexVector, uvVector, triangleVector, bottomNorthwest, topNorthwest, topSouthwest, bottomSouthwest, materialBL, materialTL, materialTR, materialBR);
 
                     // East face
-                    AddQuad(vertexVector, uvVector, triangleVector, bottomSoutheast, topSoutheast, topNortheast, bottomNortheast, materialBL, materialTL, materialTR, materialBR);
+                    if (eastValue <= 0) AddQuad(vertexVector, uvVector, triangleVector, bottomSoutheast, topSoutheast, topNortheast, bottomNortheast, materialBL, materialTL, materialTR, materialBR);
 
                     // North face
-                    //AddQuad(vertexVector, uvVector, triangleVector, bottomNortheast, bottomNorthwest, topNorthwest, topNortheast, materialBL, materialTL, materialTR, materialBR);
-                    AddQuad(vertexVector, uvVector, triangleVector, topNortheast, topNorthwest, bottomNorthwest, bottomNortheast, materialBL, materialTL, materialTR, materialBR);
+                    if (northValue <= 0) AddQuad(vertexVector, uvVector, triangleVector, topNortheast, topNorthwest, bottomNorthwest, bottomNortheast, materialBL, materialTL, materialTR, materialBR);
 
                     // South face
-                    AddQuad(vertexVector, uvVector, triangleVector, bottomSoutheast, bottomSouthwest, topSouthwest, topSoutheast, materialBL, materialTL, materialTR, materialBR);
+                    if (southValue <= 0) AddQuad(vertexVector, uvVector, triangleVector, bottomSoutheast, bottomSouthwest, topSouthwest, topSoutheast, materialBL, materialTL, materialTR, materialBR);
 
                 }
             }

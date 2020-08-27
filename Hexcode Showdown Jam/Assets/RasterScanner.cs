@@ -2,16 +2,21 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class RasterScanner : MonoBehaviour
 {
-    public VoxelBuffer bitmapBuffer;
+    [FormerlySerializedAs("bitmapBuffer")]
+    public VoxelBuffer voxelBuffer;
     public RenderedChunk[,,] renderedChunks;
 
     public const int numColors = 8;
     public Material colorMaterial;
 
     public VoxelBufferChunkPointer chunkPtr;
+
+    public const int MAX_CLEAN_CHUNK_SEARCHES_PER_FRAME = 64; // Search through X chunks for a dirty one each frame
+    public const int MAX_CHUNK_REFRESHES_PER_FRAME = 64; // Refresh up to Y chunks per frame
 
     void Start()
     {
@@ -23,11 +28,11 @@ public class RasterScanner : MonoBehaviour
                 for (int k = 0; k < VoxelBuffer.sizeZInChunks; k++)
                 {
                     renderedChunks[i, j, k] = CreateRenderedChunk("Rendered Chunk (" + i.ToString() + "," + j.ToString() + "," + k.ToString() + ")");
-                    renderedChunks[i, j, k].SetBufferAndOffset(bitmapBuffer, new IntVectorXYZ(i * VoxelBuffer.chunkSize, j * VoxelBuffer.chunkSize, k * VoxelBuffer.chunkSize));
+                    renderedChunks[i, j, k].SetBufferAndOffset(voxelBuffer, new IntVectorXYZ(i * VoxelBuffer.chunkSize, j * VoxelBuffer.chunkSize, k * VoxelBuffer.chunkSize));
                 }
             }
         }
-        chunkPtr = new VoxelBufferChunkPointer(bitmapBuffer);
+        chunkPtr = new VoxelBufferChunkPointer(voxelBuffer);
     }
 
     public void FullRefresh()
@@ -46,8 +51,8 @@ public class RasterScanner : MonoBehaviour
 
     void Update()
     {
-        int searchTimeout = 64; // Search through X chunks for a dirty one each frame
-        int chunkRefreshTimeout = 16; // Refresh up to Y chunks per frame
+        int searchTimeout = MAX_CLEAN_CHUNK_SEARCHES_PER_FRAME;
+        int chunkRefreshTimeout = MAX_CHUNK_REFRESHES_PER_FRAME;
         while (searchTimeout > 0 && chunkRefreshTimeout > 0)
         {
             if (!chunkPtr.CurrentChunkDirty())
@@ -82,7 +87,7 @@ public class RasterScanner : MonoBehaviour
         Debug.Log("Refreshing chunk " + chunkX + ", " + chunkZ);
 #endif
         renderedChunks[chunkX, chunkY, chunkZ].Refresh();
-        bitmapBuffer.dirtyChunks[chunkX, chunkY, chunkZ] = false; // We just refreshed it
+        voxelBuffer.dirtyChunks[chunkX, chunkY, chunkZ] = false; // We just refreshed it
     }
 
     public RenderedChunk CreateRenderedChunk(string name = "Rendered Chunk")
