@@ -92,8 +92,6 @@ public class RenderedChunk : MonoBehaviour
 
                     // Top face
                     if (upValue <= 0) AddQuad(vertexVector, uvVector, triangleVector, topSouthwest, topNorthwest, topNortheast, topSoutheast, materialBL, materialTL, materialTR, materialBR);
-                    //AddTriangle(vertexVector, uvVector, triangleVector, topSouthwest, topNorthwest, topSoutheast, materialUV1, materialUV2, materialUV4);
-                    //AddTriangle(vertexVector, uvVector, triangleVector, topSoutheast, topNorthwest, topNortheast, materialUV2, materialUV1, materialUV3);
 
                     // Bottom face
                     if (downValue <= 0) AddQuad(vertexVector, uvVector, triangleVector, bottomSouthwest, bottomSoutheast, bottomNortheast, bottomNorthwest, materialBL, materialTL, materialTR, materialBR);

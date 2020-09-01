@@ -47,7 +47,7 @@ public class VoxelBuffer : MonoBehaviour
 {
     public const int sizeX = 256;
     public const int sizeY = 128;
-    public const int sizeZ = 512;
+    public const int sizeZ = 128;
 
     public const int chunkSize = 16;
     public const int sizeXInChunks = sizeX / chunkSize;
@@ -57,7 +57,22 @@ public class VoxelBuffer : MonoBehaviour
     public ushort[,,] contents = new ushort[sizeX, sizeY,sizeZ];
     public bool[,,] dirtyChunks = new bool[sizeXInChunks,sizeYInChunks,sizeZInChunks];
 
-    public int y;
+    public void Clear()
+    {
+        contents = new ushort[sizeX, sizeY, sizeZ];
+        dirtyChunks = new bool[sizeXInChunks, sizeYInChunks, sizeZInChunks];
+        // Make all chunks dirty
+        for (int i=0;i<sizeXInChunks;i++)
+        {
+            for (int j=0;j<sizeYInChunks;j++)
+            {
+                for (int k=0;k<sizeZInChunks;k++)
+                {
+                    dirtyChunks[i, j, k] = true;
+                }
+            }
+        }
+    }
 
     public void Set(IntVectorXYZ coords,ushort value)
     {
@@ -118,20 +133,6 @@ public class VoxelBuffer : MonoBehaviour
         return new IntVectorXYZ(pixelCoords.x / chunkSize, pixelCoords.y / chunkSize, pixelCoords.z / chunkSize);
     }
 
-    /*
-    public IntVectorXYZ GetInDirection(IntVectorXYZ coords,int d)
-    {
-        IntVectorXYZ result;
-        if (d == 0) result = coords.North();
-        else if (d == 1) result = coords.East();
-        else if (d == 2) result = coords.South();
-        else result = coords.West();
-
-        if (OutOfBounds(result)) return IntVectorXYZ.oob;
-        return result;
-    }
-    */
-
     public bool OutOfBounds(IntVectorXYZ coords)
     {
         if (coords.x < 0) return true;
@@ -177,5 +178,14 @@ public class VoxelBufferChunkPointer
     {
         return pointerCoords;
     }
-    
+    public bool AtFinalChunk()
+    {
+        return pointerCoords.x == VoxelBuffer.sizeXInChunks-1 && pointerCoords.y == VoxelBuffer.sizeYInChunks-1 && pointerCoords.z == VoxelBuffer.sizeZInChunks-1;
+    }
+    public void Reset()
+    {
+        pointerCoords.x = 0;
+        pointerCoords.y = 0;
+        pointerCoords.z = 0;
+    }
 }

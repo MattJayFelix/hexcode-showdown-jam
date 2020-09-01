@@ -19,7 +19,7 @@ public class Spriggan : MonoBehaviour
     public const float uOffset50Percent = 0.5f * uOffsetPerColor;
     public const float uOffset75Percent = 0.75f * uOffsetPerColor;
 
-    public float backOffset = 4.0f;
+    public static float backOffset = 4.0f;
 
     public void Load(SprigganSheet sheet,ushort[,] voxelValues)
     {
@@ -74,14 +74,16 @@ public class Spriggan : MonoBehaviour
                 materialTR = new Vector2(baseU + uOffset75Percent, 0.9f);
                 materialBR = new Vector2(baseU + uOffset75Percent, 0.1f);
 
+                /*
                 if (i==0 && j==0)
                 {
                     Debug.Log("Spitting UVs for " + gameObject.name);
-                    Debug.Log(materialBL + " " + materialTL + " " + materialTR + " " + materialBR);
+                    Debug.Log(materialBL + " " + materialTL + " " + materialTR + " " + materialBR); 
                 }
+                */
 
                 int modelMod = scaffold.GetModelMod(coords);
-
+                
                 if (modelMod == 0) // Regular cubes
                 {
                     // Front face (always)

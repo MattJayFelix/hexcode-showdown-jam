@@ -13,20 +13,17 @@ public class SprigganSheet : MonoBehaviour
     
     public Texture2D texture;
 
-    public Spriggan[] spriggans = new Spriggan[64];
+    public Spriggan[] spriggans;
+    public SprigganAnimation[] animations;
+
     public int sprigganWidth;
+    public int sprigganHeight = -1; // Set on load
 
     public int activeIndex;
 
-    private void Awake()
-    {
-        if (!loaded)
-        {
-            Load();
-        }
-    }
     public void Load()
     {
+        spriggans = new Spriggan[64];
         if (texture == null)
         {
             Debug.LogError("Spriggan sheet " + gameObject.name + " cannot load: no assigned texture.");
@@ -34,6 +31,12 @@ public class SprigganSheet : MonoBehaviour
         }
         loaded = true;
         Manufacture();
+        SprigganAnimation[] animationScripts = gameObject.GetComponentsInChildren<SprigganAnimation>();
+        animations = new SprigganAnimation[animationScripts.Length];
+        foreach (SprigganAnimation a in animationScripts)
+        {
+            animations[a.index] = a;
+        }
         Hide();
     }
 
@@ -71,7 +74,7 @@ public class SprigganSheet : MonoBehaviour
             Debug.LogError("Spriggan sheet " + gameObject.name + " cannot load: width/sprigganWidth == 0");
             return;
         }
-        int sprigganHeight = texture.height;
+        sprigganHeight = texture.height;
         for (int sprigganIndex=0;sprigganIndex < numSpriggansInSheet;sprigganIndex++)
         {
             int startX = sprigganIndex * sprigganWidth;
@@ -79,6 +82,7 @@ public class SprigganSheet : MonoBehaviour
             GameObject spriggan = new GameObject(gameObject.name + " " + sprigganIndex);
             spriggan.transform.parent = transform;
             Spriggan newSpriggan = spriggan.AddComponent<Spriggan>();
+            //Debug.Log("Spriggan " + sprigganIndex);
             spriggans[sprigganIndex] = newSpriggan;
             ushort[,] paletteBlock = new ushort[sprigganWidth, sprigganHeight];
             for (int i=0;i<linearTexture.Length;i++)

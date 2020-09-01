@@ -13,8 +13,13 @@ public class SprigganLibrary : MonoBehaviour
         foreach (SprigganSheet s in allSheets)
         {
             s.material = material;
-            if (!s.loaded) s.Load();
+            s.Load();
             sprigganSheets.Add(s.key, s);
         }
+    }
+    public SprigganSheet CopySprigganSheet(string key)
+    {
+        GameObject result = Instantiate(sprigganSheets[key].gameObject);
+        return result.GetComponent<SprigganSheet>();
     }
 }
