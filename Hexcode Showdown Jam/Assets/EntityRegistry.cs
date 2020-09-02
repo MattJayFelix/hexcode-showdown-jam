@@ -29,7 +29,7 @@ public class EntityRegistry : MonoBehaviour
     {
         foreach (Entity e in entities)
         {
-            GameObject.Destroy(e.gameObject);
+            if (e != null) GameObject.Destroy(e.gameObject);
         }
         entities = new List<Entity>();
     }

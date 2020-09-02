@@ -38,7 +38,20 @@ public class ActionGamePhase : GamePhase
     public VoxelTextBox heroText;
     public VoxelTextBox enemyText;
 
-    public bool matchStarted = false;
+    public VoxelTextBox matchResultText;
+
+    public bool matchStarted { get { return gameData.matchStarted; } set { gameData.matchStarted = value; } }
+
+    public float heroFireCooldown = 0.1f;
+    public float heroFireCooldownRemaining = 0.0f;
+
+    public float heroHitstunCooldown = 0.5f; // Simultaneously invulnerability
+    public float heroHitstunCooldownRemaining = 0.0f;
+
+    public const float matchEndingTime = 2.5f;
+    public float matchEndingTimer = matchEndingTime;
+
+    private float savedTimeScale; // For when game's over
 
     public GameObject GetSpace(IntVectorXYZ coords)
     {
@@ -209,36 +222,82 @@ public class ActionGamePhase : GamePhase
             }
             return;
         }
-        // Hero controls
-        ProcessPlayerInput();
-        ProcessEnemyAI();
-        PositionEntities();
+        CheckHeroShotHits();
+        CheckEnemyShotHits();
+        if (gameData.matchResult == 0)
+        {
+            // Hero controls
+            ProcessPlayerInput();
+            ProcessEnemyAI();
+            PositionEntities();
+            heroHealth.Show(gameData.heroHealth, gameData.heroMaxHealth);
+            enemyHealth.Show(gameData.enemyHealth, gameData.enemyMaxHealth);
+            CheckMatchOver();
+        }
+        if (gameData.matchResult != 0)
+        {
+            matchEndingTimer -= Time.unscaledDeltaTime;
+            matchResultText.transform.position = matchResultText.transform.position + new Vector3(0.0f, 32.0f * Time.unscaledDeltaTime, 0.0f);
+            if (matchEndingTimer <= 0.0f)
+            {
+                Time.timeScale = savedTimeScale;
+                if (gameData.matchResult == 1) gameDriver.StartPhase(GameDriverPhases.Transition);
+                else if (gameData.matchResult == -1) FinishGame();
+            }
+
+        }
     }
 
     public void ProcessPlayerInput()
     {
-        if (Input.GetButtonDown("Horizontal"))
+        if (heroFireCooldownRemaining > 0.0f)
         {
-            if (Input.GetAxisRaw("Horizontal") > 0)
+            heroFireCooldownRemaining -= Time.deltaTime;
+        }
+        if (heroHitstunCooldownRemaining > 0.0f)
+        {
+            heroHitstunCooldownRemaining -= Time.deltaTime;
+        }
+
+        if (hero.currentAnimation != null && hero.currentAnimation.index != 0 && heroFireCooldownRemaining <= 0.0f && heroHitstunCooldownRemaining <= 0.0f)
+        {
+            hero.StartAnimation(0);
+        }
+
+        if (hero.currentAnimation != null && hero.currentAnimation.index == 0)
+        {
+            if (Input.GetButtonDown("Horizontal"))
             {
-                if (heroSpace.x < 2) gameData.heroSpace = new IntVectorXYZ(heroSpace.x + 1, 0, heroSpace.z);
+                if (Input.GetAxisRaw("Horizontal") > 0)
+                {
+                    if (heroSpace.x < 2) gameData.heroSpace = new IntVectorXYZ(heroSpace.x + 1, 0, heroSpace.z);
+                }
+                else
+                {
+                    if (heroSpace.x > 0) gameData.heroSpace = new IntVectorXYZ(heroSpace.x - 1, 0, heroSpace.z);
+                }
             }
-            else
+            if (Input.GetButtonDown("Vertical"))
             {
-                if (heroSpace.x > 0) gameData.heroSpace = new IntVectorXYZ(heroSpace.x - 1, 0, heroSpace.z);
+                if (Input.GetAxisRaw("Vertical") > 0)
+                {
+                    if (heroSpace.z < 2) gameData.heroSpace = new IntVectorXYZ(heroSpace.x, 0, heroSpace.z + 1);
+                }
+                else
+                {
+                    if (heroSpace.z > 0) gameData.heroSpace = new IntVectorXYZ(heroSpace.x, 0, heroSpace.z - 1);
+                }
+            }
+            if (Input.GetButtonDown("Fire1") && HeroShotSheet.activeShotCount < 3 && heroFireCooldownRemaining <= 0.0f)
+            {
+                // Fire!
+                Entity heroShot = gameDriver.CreateShot("hero");
+                heroShot.transform.position = hero.transform.position + heroShot.GetComponentInChildren<ShotSheet>().GetFireOffset();
+                heroFireCooldownRemaining = heroFireCooldown;
+                hero.StartAnimation(1);
             }
         }
-        if (Input.GetButtonDown("Vertical"))
-        {
-            if (Input.GetAxisRaw("Vertical") > 0)
-            {
-                if (heroSpace.z < 2) gameData.heroSpace = new IntVectorXYZ(heroSpace.x, 0, heroSpace.z + 1);
-            }
-            else
-            {
-                if (heroSpace.z > 0) gameData.heroSpace = new IntVectorXYZ(heroSpace.x, 0, heroSpace.z - 1);
-            }
-        }
+
         if (Input.GetButtonDown("Cancel"))
         {
             FinishGame();
@@ -254,6 +313,80 @@ public class ActionGamePhase : GamePhase
         }
     }
 
+    public void CheckHeroShotHits()
+    {
+        for (int i=0;i < HeroShotSheet.activeShots.Length;i++)
+        {
+            HeroShotSheet thisShot = HeroShotSheet.activeShots[i];
+            if (thisShot == null) continue;
+            bool shotHit = thisShot.CheckForHit(enemy);
+            if (shotHit)
+            {
+                Destroy(thisShot.shotEntity.gameObject);
+                if (enemyAI != null && !enemyAI.invulnerable)
+                {
+                    if (!enemyAI.invulnerableDuringHitstun || enemyAI.hitStunRemaining <= 0.0f) gameData.enemyHealth -= thisShot.damage;
+                    enemyAI.OnWasHit();
+                }
+            }
+        }
+    }
+
+    public void CheckEnemyShotHits()
+    {
+        if (enemyAI == null) return;
+        for (int i = 0; i < enemyAI.activeShots.Length; i++)
+        {
+            ShotSheet thisShot = enemyAI.activeShots[i];
+            if (thisShot == null) continue;
+            bool shotHit = thisShot.CheckForHit(hero);
+            if (shotHit)
+            {
+                Destroy(thisShot.shotEntity.gameObject);
+                if (hero.currentAnimation != null && hero.currentAnimation.index != 2)
+                {
+                    heroHitstunCooldownRemaining = heroHitstunCooldown;
+                    gameData.heroHealth -= thisShot.damage;                    
+                    hero.StartAnimation(2);
+                }
+            }
+        }
+    }
+
+    public void CheckMatchOver()
+    {
+        if (gameData.heroHealth <= 0)
+        {
+            gameData.matchResult = -1;
+            matchEndingTimer = matchEndingTime;
+            matchResultText = gameDriver.CreateTextBox();
+            ShowMatchResultText(gameData.enemyName + " Wins");
+            savedTimeScale = Time.timeScale;
+            Time.timeScale = 0.1f;
+            //Debug.Log("CLEARING ENEMY AI");
+            gameData.ClearEnemyAI();
+        }
+        if (gameData.enemyHealth <= 0)
+        {
+            gameData.matchResult = 1;
+            matchEndingTimer = matchEndingTime;
+            ShowMatchResultText("Lisa The Orca Wins");
+            savedTimeScale = Time.timeScale;
+            Time.timeScale = 0.25f;
+            Debug.Log("CLEARING ENEMY AI");
+            gameData.ClearEnemyAI();
+        }
+    }
+
+    public void ShowMatchResultText(string text)
+    {
+        matchResultText = gameDriver.CreateTextBox();
+        matchResultText.ShowText(text);
+        matchResultText.transform.position = new Vector3(87.0f, 8.0f, 21.0f);
+        matchResultText.transform.localScale = new Vector3(0.25f, 0.25f, 0.1f);
+        matchResultText.transform.rotation = Quaternion.Euler(45.0f, 0.0f, 0.0f);
+    }
+
     public void FinishGame()
     {
         int currentHighScoreValue = UnityEngine.PlayerPrefs.GetInt("highscore");
@@ -265,10 +398,14 @@ public class ActionGamePhase : GamePhase
         gameDriver.StartPhase(GameDriverPhases.MainMenu);
     }
 
+
     public override void EndPhase()
     {
         Destroy(heroHealth.gameObject);
         Destroy(enemyHealth.gameObject);
+        Destroy(heroText.gameObject);
+        Destroy(enemyText.gameObject);
+        if (matchResultText != null) Destroy(matchResultText.gameObject);
         voxelBuffer.Clear();
         entityRegistry.Clear();
         gameDriver.rasterScanner.ResetChunkPtr();

@@ -6,7 +6,7 @@ public class GameData : MonoBehaviour
 {
     public GameDriver gameDriver;
 
-    public const int cycleLength = 8;
+    public const int cycleLength = 6;
     public int cyclesCompleted;
     public int roundNumber; // Starts at 1 and increments, this is the score
     public const float speedIncreasePerCycle = 0.25f;
@@ -37,6 +37,8 @@ public class GameData : MonoBehaviour
     public IntVectorXYZ heroSpace;
     public IntVectorXYZ enemySpace;
 
+    public bool matchStarted = false;
+    public int matchResult = 0; // 1 win 0 lose
 
     [System.NonSerialized]
     public string[] names = null;
@@ -52,7 +54,9 @@ public class GameData : MonoBehaviour
 
     public void RefreshTimeScale()
     {
+        cyclesCompleted = (roundNumber - 1) / cycleLength;
         Time.timeScale = 1.0f + speedIncreasePerCycle * (float)cyclesCompleted;
+        //Debug.LogWarning("Time scale now " + Time.timeScale);
     }
 
     public static char[] splitChars = { '\n' };
@@ -73,29 +77,20 @@ public class GameData : MonoBehaviour
 
     public void ReadyNextMatch()
     {
+        matchStarted = false;
+        matchResult = 0;
         roundNumber++;
         enemyKey = ChooseEnemyKey();
         enemySheet = gameDriver.enemyLibrary.enemySheets[enemyKey];
         CreateEnemyAI();
+        enemyAI.enemySheet = enemySheet;
         enemyName = DrawName() + " The " + enemySheet.species;
         enemyHealth = enemySheet.health;
         enemyMaxHealth = enemySheet.health;
         PrepareArena();
         heroSpace = new IntVectorXYZ(1, 0, 1);
         enemySpace = new IntVectorXYZ(4, 0, 1);
-    }
-
-    public string ChooseEnemyKey()
-    {
-        int roundInCycle = (roundNumber - 1) % cycleLength;
-        if (roundInCycle == 0)
-        {
-            return "guppy";
-        }
-        else
-        {
-            return "guppy";
-        }
+        RefreshTimeScale();
     }
 
     public void PrepareArena()
@@ -155,6 +150,40 @@ public class GameData : MonoBehaviour
     */
     }
 
+    public string ChooseEnemyKey()
+    {
+        int roundInCycle = (roundNumber - 1) % cycleLength;
+        if (roundInCycle == 0)
+        {
+            return "guppy";
+        }
+        else if (roundInCycle == 1)
+        {
+            return "snail";
+        }
+        else if (roundInCycle == 2)
+        {
+            return "redSnapper";
+        }
+        else if (roundInCycle == 3)
+        {
+            return "jellyfish";
+        }
+        else if (roundInCycle == 4)
+        {
+            return "darter";
+        }
+        else if (roundInCycle == 5)
+        {
+            return "eel";
+        }
+        else
+        {
+            return "guppy";
+        }
+    }
+
+
     public void CreateEnemyAI()
     {
         if (enemyAI != null)
@@ -163,11 +192,33 @@ public class GameData : MonoBehaviour
         }
         switch (enemySheet.ai)
         {
+            case "guppy":
+                enemyAI = gameObject.AddComponent<GuppyAI>();
+                break;
+            case "snail":
+                enemyAI = gameObject.AddComponent<SnailAI>();
+                break;
+            case "darter":
+                enemyAI = gameObject.AddComponent<DarterAI>();
+                break;
+            case "jellyfish":
+                enemyAI = gameObject.AddComponent<JellyfishAI>();
+                break;
+            case "eel":
+                enemyAI = gameObject.AddComponent<EelAI>();
+                break;
+            case "redSnapper":
+                enemyAI = gameObject.AddComponent<RedSnapperAI>();
+                break;
             default:
                 enemyAI = gameObject.AddComponent<GuppyAI>();
                 break;
         }
         enemyAI.gameData = this;
     }
-
+    public void ClearEnemyAI()
+    {
+        Destroy(enemyAI);
+        enemyAI = null;
+    }
 }

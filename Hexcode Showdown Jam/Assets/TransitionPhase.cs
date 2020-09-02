@@ -60,7 +60,7 @@ public class TransitionPhase : GamePhase
     public void Update()
     {
         timeout -= Time.unscaledDeltaTime;
-        if (timeout <= 0.0f || Input.GetButtonDown("Fire1") || Input.GetButtonDown("Cancel"))
+        if (timeout <= 0.0f || (gameDriver.rasterScanner.finalChunkFlag && (Input.GetButtonDown("Fire1") || Input.GetButtonDown("Cancel"))))
         {
             Advance();
         }
@@ -106,7 +106,6 @@ public class TransitionPhase : GamePhase
         {
             for (int k = 0; k < VoxelBuffer.sizeZ - 1; k++)
             {
-                ;
                 voxelBuffer.Set(new IntVectorXYZ(0, j, k), environmentColor);
                 voxelBuffer.Set(new IntVectorXYZ(VoxelBuffer.sizeX - 1, j, k), environmentColor);
             }

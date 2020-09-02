@@ -21,9 +21,9 @@ public class Entity : MonoBehaviour
         this.sprigganSheet = s;
         s.transform.parent = transform;
         Scale(defaultScale);
-        if (s.animations.Length == 1)
+        if (s.animations.Length >= 1)
         {
-            StartAnimation(0); // If there's only one animation, default to it
+            StartAnimation(0); // default animation
         }
     }
 
@@ -45,6 +45,7 @@ public class Entity : MonoBehaviour
 
     public void AdvanceAnimationFrame()
     {
+        if (currentAnimation == null) return;
         currentAnimationFrameIndex++;
         if (currentAnimationFrameIndex >= currentAnimation.frames.Length)
         {

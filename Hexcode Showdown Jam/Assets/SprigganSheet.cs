@@ -32,7 +32,8 @@ public class SprigganSheet : MonoBehaviour
         loaded = true;
         Manufacture();
         SprigganAnimation[] animationScripts = gameObject.GetComponentsInChildren<SprigganAnimation>();
-        animations = new SprigganAnimation[animationScripts.Length];
+        animations = new SprigganAnimation[animationScripts.Length + 4];
+        //Debug.Log("Mdae space for " + animationScripts.Length + " animtaions");
         foreach (SprigganAnimation a in animationScripts)
         {
             animations[a.index] = a;
@@ -130,6 +131,7 @@ public class SprigganSheet : MonoBehaviour
         return (ushort)(lowestDistanceIndex + 1); // Add one because of transparency in 0
     }
 }
+/*
 [CustomEditor(typeof(SprigganSheet))]
 public class SprigganSheetEditor : Editor
 {
@@ -144,3 +146,4 @@ public class SprigganSheetEditor : Editor
         }
     }
 }
+*/

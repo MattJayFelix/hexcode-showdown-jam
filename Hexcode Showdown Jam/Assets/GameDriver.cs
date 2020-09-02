@@ -40,6 +40,7 @@ public class GameDriver : MonoBehaviour
     public EntityRegistry entityRegistry;
     public GameData gameData;
     public EnemyLibrary enemyLibrary;
+    public ShotLibrary shotLibrary;
 
     public GamePhase currentPhase; 
 
@@ -102,9 +103,20 @@ public class GameDriver : MonoBehaviour
     }
     public Entity CreateEnemy()
     {
-        Entity result = entityRegistry.SpawnEntity("Enemy", gameData.enemyKey);
-        
+        Entity result = entityRegistry.SpawnEntity("Enemy", gameData.enemyKey);        
         result.StartAnimation(0); // Neutral animation
+        return result;
+    }
+    public Entity CreateShot(string shotKey)
+    {
+        ShotSheet shotSheet = shotLibrary.shotSheets[shotKey];
+        Entity result = entityRegistry.SpawnEntity(shotKey, shotSheet.sprigganSheet);
+        GameObject launchedShotSheetOb = GameObject.Instantiate(shotSheet.gameObject);
+        launchedShotSheetOb.transform.parent = result.transform;
+        ShotSheet launchedSheet = launchedShotSheetOb.GetComponent<ShotSheet>();
+        launchedSheet.shotEntity = result;
+        launchedSheet.gameObject.SetActive(true);
+        launchedSheet.Launch();
         return result;
     }
 

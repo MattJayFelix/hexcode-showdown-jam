@@ -37,7 +37,9 @@ public class HealthBar : MonoBehaviour
         int numFullSegments = health / 2;
         int numPartialSegments = health % 2;
         int numSegmentsTotal = maxHealth / 2;
-        int numEmptySegments = numSegmentsTotal - numFullSegments - numPartialSegments;
+        int numEmptySegments;
+        if (health > 0) numEmptySegments = numSegmentsTotal - numFullSegments - numPartialSegments;
+        else numEmptySegments = numSegmentsTotal;
 
         int currentSegment = rightToLeft ? 0 : sizeInSegments - 1;
 

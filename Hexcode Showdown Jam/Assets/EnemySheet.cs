@@ -8,4 +8,6 @@ public class EnemySheet : MonoBehaviour
     public string species;
     public int health;
     public string ai;
+    public string shot;
+    public string shot2;
 }
